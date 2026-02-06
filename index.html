@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Sort Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ec4899;
+            --primary-dark: #be185d;
+            --bg-normal: #fef2f2;
+            --bg-legendary: #fdf2f8;
+            --card-bg: #fffbfb;
+            --bubble-border: #4a90e2;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: var(--bg-normal);
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 100vh;
+            transition: background 0.7s ease;
+        }
+
+        .text-primary { color: var(--primary); }
+        .bg-primary { background-color: var(--primary); }
+        .border-primary { border-color: var(--primary); }
+        .border-primary-dark { border-color: var(--primary-dark); }
+        .card-bg { background-color: var(--card-bg); }
+        .normal-bg { background-color: var(--bg-normal); }
+        .legendary-bg { 
+            background: radial-gradient(circle at center, #fff1f2 0%, #ffe4e6 100%);
+            animation: bg-pulse 10s infinite alternate;
+        }
+
+        @keyframes float-slow {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(1deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .animate-float-slow {
+            animation: float-slow 4s ease-in-out infinite;
+        }
+
+        /* Speech Bubble Tail */
+        .speech-bubble {
+            position: relative;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 7px solid transparent;
+            border-bottom: 7px solid transparent;
+            border-right: 10px solid var(--bubble-border);
+            z-index: 10;
+        }
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            left: -7px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-right: 8px solid white;
+            z-index: 11;
+        }
+
+        @keyframes customer-enter {
+            0% { transform: translateX(-30px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .animate-customer-enter { animation: customer-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+        @keyframes sparkle-pop {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .animate-sparkle {
+            animation: sparkle-pop 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+
+        @keyframes dish-pop-up {
+          0% { transform: translate(-50%, 0) scale(0) rotate(-20deg); opacity: 0; }
+          30% { transform: translate(-50%, -100px) scale(2.5) rotate(10deg); opacity: 1; }
+          70% { transform: translate(-50%, -120px) scale(2.5) rotate(-5deg); opacity: 1; }
+          100% { transform: translate(-50%, -180px) scale(3) rotate(0deg); opacity: 0; }
+        }
+        .animate-dish-pop {
+          animation: dish-pop-up 1.8s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
+        }
+
+        /* Box Block Styles */
+        .box-block-locked {
+            background: rgba(15, 23, 42, 0.1);
+            border-top: 4px solid #475569;
+            border-bottom: 4px solid #475569;
+            position: relative;
+        }
+        .box-block-locked::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.05) 75%, transparent 75%, transparent);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        @keyframes cube-reveal {
+          0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+          60% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .animate-cube-reveal {
+          animation: cube-reveal 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
+
+    <!-- Load React and ReactDOM from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // ==================== CONSTANTS ====================
+        const TOPIC_DATA = [
+          { id: 'smores', name: 'S\'mores', items: ['🍘', '☁️', '🍫', '🔥'] },
+          { id: 'pbj_sandwich', name: 'PB&J Sandwich', items: ['🥪', '🥜', '🍇', '🔪'] },
+          { id: 'blt_sandwich', name: 'BLT Sandwich', items: ['🥓', '🥬', '🍞', '🥑'] },
+          { id: 'buffalo_wings', name: 'Buffalo Wings', items: ['🍗', '🌶️', '🥕', '🥣'] },
+          { id: 'mac_cheese', name: 'Mac & Cheese', items: ['🍝', '🧀', '🥛', '🧈'] },
+          { id: 'philly_cheesesteak', name: 'Philly Cheesesteak', items: ['🥖', '🥩', '🧅', '🫑'] },
+          { id: 'cheeseburger', name: 'Cheeseburger', items: ['🍔', '🥒', '🍟', '🥤'] },
+          { id: 'hot_dog', name: 'Hot Dog', items: ['🌭', '🥨', '🌽', '🥫'] },
+          { id: 'apple_pie', name: 'Apple Pie', items: ['🍎', '🥧', '🍋', '🌾'] },
+          { id: 'choc_chip_cookies', name: 'Chocolate Chip Cookies', items: ['🍪', '🥚', '🥡', '🥄'] },
+          { id: 'pepperoni_pizza', name: 'Pepperoni Pizza', items: ['🍕', '🍅', '🌿', '🍄'] },
+          { id: 'pancakes', name: 'Breakfast Pancakes', items: ['🥞', '🍯', '🍓', '🍌'] },
+        ];
+
+        const MAX_TUBE_CAPACITY = 4;
+        const MAX_TIME_LIMIT = 240;
+        const CUSTOMER_EMOJIS = ['👨‍🍳', '👩‍🌾', '👮‍♂️', '🧟‍♂️', '🧛‍♀️', '🎅', '🧙‍♂️', '🦸‍♀️', '🕵️‍♂️', '👷‍♀️', '👸', '👽'];
+        const REWARD_TIME = 15;
+        const PENALTY_TIME = 20;
+        const DISH_MAPPING = {
+          smores: '🍢',
+          pbj_sandwich: '🥪',
+          blt_sandwich: '🥪',
+          buffalo_wings: '🍗',
+          mac_cheese: '🧀',
+          philly_cheesesteak: '🥖',
+          cheeseburger: '🍔',
+          hot_dog: '🌭',
+          apple_pie: '🥧',
+          choc_chip_cookies: '🍪',
+          pepperoni_pizza: '🍕',
+          pancakes: '🥞'
+        };
+        const BOX_LOCK_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7'];
+        const LINK_COLORS = ['#38bdf8', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+        const GameStatus = {
+          START: 'START',
+          PLAYING: 'PLAYING',
+          WON: 'WON',
+          LOST: 'LOST',
+          OUT_OF_MOVES: 'OUT_OF_MOVES'
+        };
+
+        // ==================== CUBE COMPONENT ====================
+        const getHashCode = (str) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+          }
+          return Math.abs(hash);
+        };
+
+        const Cube = ({ item, isHighlighted, isFloating, indexInTube, matchCount, floatingOffset }) => {
+          const [justRevealed, setJustRevealed] = useState(false);
+          const [justMatched, setJustMatched] = useState(false);
+          const wasHiddenRef = useRef(item.isHidden);
+          const prevMatchCountRef = useRef(matchCount);
+
+          useEffect(() => {
+            if (wasHiddenRef.current === true && !item.isHidden) {
+              setJustRevealed(true);
+              setTimeout(() => setJustRevealed(false), 1000);
+            }
+            wasHiddenRef.current = item.isHidden;
+          }, [item.isHidden]);
+
+          useEffect(() => {
+            if (matchCount > prevMatchCountRef.current && matchCount > 0 && !isFloating) {
+              setJustMatched(true);
+              setTimeout(() => setJustMatched(false), 500);
+            }
+            prevMatchCountRef.current = matchCount;
+          }, [matchCount, isFloating]);
+
+          const hasLink = !!item.linkColor;
+          const floatingTransform = isFloating && floatingOffset 
+            ? { transform: 'translateY(var(--floating-final-offset))' } 
+            : {};
+
+          const keyColor = item.hasKey ? BOX_LOCK_COLORS[Math.abs(getHashCode(item.hasKey)) % BOX_LOCK_COLORS.length] : '#fbbf24';
+
+          return React.createElement('div', {
+            className: `
+              w-[46px] h-[44px] rounded-lg md:rounded-xl flex items-center justify-center text-[38px] md:text-[42px]
+              transition-all duration-300 transform relative border-b-2 md:border-b-4
+              shadow-sm shrink-0
+              ${item.isHidden ? 'bg-cyan-100 border-cyan-300 shadow-[inset_0_0_5px_rgba(255,255,255,0.8)]' : 'bg-white border-slate-300'}
+              ${isHighlighted && !item.isHidden ? 'scale-105 z-20 shadow-xl border-sky-400' : 'z-10'}
+              ${isFloating && !item.isHidden ? 'ring-2 md:ring-4 ring-sky-400 z-[200]' : ''}
+              ${item.isHidden ? 'animate-pulse' : ''}
+              [--floating-final-offset:var(--offset-mobile)]
+              md:[--floating-final-offset:var(--offset-desktop)]
+            `,
+            style: {
+              ...floatingTransform,
+              '--offset-mobile': `-${floatingOffset?.mobile || 64}px`,
+              '--offset-desktop': `-${floatingOffset?.desktop || 96}px`,
+              ...(hasLink && !item.isHidden ? { 
+                borderColor: item.linkColor, 
+                boxShadow: `0 0 10px ${item.linkColor}44`,
+                borderWidth: '2px',
+                borderBottomWidth: '4px'
+              } : {})
+            }
+          }, [
+            justMatched && React.createElement('div', {
+              key: 'sparkle',
+              className: 'absolute inset-0 flex items-center justify-center pointer-events-none z-50'
+            }, [
+              React.createElement('div', { key: 'bg', className: 'absolute w-full h-full bg-white rounded-xl animate-sparkle' }),
+              React.createElement('div', { key: 'icon', className: 'text-lg md:text-2xl animate-sparkle' }, '✨')
+            ]),
+            React.createElement('span', {
+              key: 'icon',
+              className: `
+                drop-shadow-sm select-none relative z-10 transition-all duration-300 leading-none flex items-center justify-center
+                ${item.isHidden ? 'text-cyan-600/50 scale-75' : 'scale-100'}
+                ${justRevealed ? 'animate-cube-reveal' : ''}
+              `
+            }, item.isHidden ? '🧊' : item.icon),
+            item.hasKey && !item.isHidden && React.createElement('div', {
+              key: 'key',
+              className: 'absolute -top-1 -left-1 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-lg border-2 border-white shadow-lg bg-white animate-bounce z-20',
+              style: { color: keyColor }
+            }, '🔑'),
+            hasLink && !item.isHidden && React.createElement('div', {
+              key: 'link',
+              className: 'absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[10px] border border-white shadow-lg animate-pulse z-20',
+              style: { backgroundColor: item.linkColor, color: 'white' }
+            }, '🔗')
+          ]);
+        };
+
+        // ==================== TUBE COMPONENT ====================
+        const Tube = ({ 
+          id, items, isSelected, onClick, isPickingUp, isLegendary, lockStatus, 
+          prevLockStatus, nextLockStatus, hasQueue, completedCount = 0, onComplete, onReplace 
+        }) => {
+          const [shake, setShake] = useState(false);
+          const [showDishAnim, setShowDishAnim] = useState(false);
+          const [isVanishing, setIsVanishing] = useState(false);
+          const wasCompleteRef = useRef(false);
+          
+          const isLocked = lockStatus?.isLocked;
+          const condition = lockStatus?.condition;
+          const groupId = lockStatus?.groupId;
+
+          const isInBox = !!groupId && isLocked;
+          const isBoxStart = isInBox && prevLockStatus?.groupId !== groupId;
+          const isBoxEnd = isInBox && nextLockStatus?.groupId !== groupId;
+          const isBoxMiddle = isInBox && prevLockStatus?.groupId === groupId && nextLockStatus?.groupId === groupId;
+
+          const isComplete = items.length === MAX_TUBE_CAPACITY && 
+                             !items.some(item => item.isHidden) &&
+                             items.every(item => item.topicId === items[0].topicId) &&
+                             new Set(items.map(item => item.icon)).size === MAX_TUBE_CAPACITY;
+
+          useEffect(() => {
+            if (isComplete && !wasCompleteRef.current) {
+              const topicId = items[0].topicId;
+              if (onComplete) onComplete(topicId);
+              setShowDishAnim(true);
+              
+              setTimeout(() => {
+                 setShowDishAnim(false);
+                 if (hasQueue) {
+                   setIsVanishing(true);
+                   setTimeout(() => {
+                       if (onReplace) onReplace();
+                       setIsVanishing(false); 
+                   }, 500);
+                 }
+              }, 1500); 
+            }
+            wasCompleteRef.current = isComplete;
+          }, [isComplete, onComplete, onReplace, hasQueue, items]);
+
+          const topicName = isComplete ? items[0].label : null;
+          const topicId = isComplete ? items[0].topicId : null;
+          const dishEmoji = topicId ? (DISH_MAPPING[topicId] || '🥘') : '🥘';
+
+          const topItem = items.length > 0 ? items[items.length - 1] : null;
+          const activeTopicId = topItem && !topItem.isHidden ? topItem.topicId : null;
+          
+          const sequenceIndices = [];
+          if (activeTopicId) {
+            for (let i = items.length - 1; i >= 0; i--) {
+              if (items[i].topicId === activeTopicId && !items[i].isHidden) {
+                sequenceIndices.push(i);
+              } else {
+                break;
+              }
+            }
+          }
+
+          const highestSelectedIndex = sequenceIndices.length > 0 ? Math.max(...sequenceIndices) : 0;
+          const floatingOffsetMobile = 200 - ((highestSelectedIndex + 1) * 44);
+          const floatingOffsetDesktop = 320 - ((highestSelectedIndex + 1) * 44);
+
+          const handleInteraction = () => {
+            if (isLocked || isComplete) {
+              setShake(true);
+              setTimeout(() => setShake(false), 500);
+              return;
+            }
+            onClick();
+          };
+
+          const getMatchCount = (idx) => {
+            const current = items[idx];
+            if (!current || current.isHidden) return 0;
+            let count = 0;
+            const below = idx > 0 ? items[idx - 1] : null;
+            const above = idx < items.length - 1 ? items[idx + 1] : null;
+            if (below && !below.isHidden && below.topicId === current.topicId) count++;
+            if (above && !above.isHidden && above.topicId === current.topicId) count++;
+            return count;
+          };
+
+          const getLockDisplay = () => {
+            if (!condition) return null;
+            
+            if (condition.type === 'topic') {
+               return React.createElement('span', { className: 'text-xl md:text-4xl drop-shadow-sm' }, condition.label);
+            } 
+            
+            if (condition.type === 'key') {
+               return React.createElement('span', { 
+                 className: 'text-xl md:text-4xl', 
+                 style: { color: condition.color } 
+               }, '🔐');
+            }
+            
+            if (condition.type === 'count') {
+               const required = condition.value;
+               const remaining = Math.max(0, required - completedCount);
+               return React.createElement(React.Fragment, null, [
+                 React.createElement('span', { key: 'icon', className: 'text-lg md:text-2xl' }, '🍽️'),
+                 React.createElement('span', { 
+                   key: 'text', 
+                   className: 'text-[7px] md:text-[10px] font-black text-slate-600 uppercase leading-none whitespace-nowrap' 
+                 }, `Còn: ${remaining}`)
+               ]);
+            }
+
+            return null;
+          };
+
+          return React.createElement('div', {
+            onClick: handleInteraction,
+            className: `relative cursor-pointer flex flex-col items-center justify-end
+              w-[50px] min-w-[50px] md:w-[90px] md:min-w-[90px]
+              h-auto transition-all duration-500 
+              ${isSelected ? 'scale-105 -translate-y-1 md:-translate-y-2 z-[60]' : 'hover:scale-105 z-10'}
+              ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}
+              ${isVanishing ? 'opacity-0 scale-50' : 'opacity-100 scale-100'} 
+              animate-[fadeIn_0.5s_ease-out]
+            `
+          }, [
+            showDishAnim && React.createElement('div', {
+              key: 'dish-anim',
+              className: 'absolute top-1/2 left-1/2 z-[200] pointer-events-none'
+            }, [
+              React.createElement('div', { 
+                key: 'dish', 
+                className: 'animate-dish-pop text-5xl md:text-8xl drop-shadow-2xl' 
+              }, dishEmoji),
+              React.createElement('div', { 
+                key: 'steam', 
+                className: 'absolute top-0 left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 bg-white/20 blur-xl rounded-full steam-effect' 
+              })
+            ]),
+            React.createElement('div', { key: 'header', className: 'relative w-full' },
+              React.createElement('div', {
+                className: `
+                  h-6 md:h-12 flex items-center justify-center rounded-t-[8px] md:rounded-t-[16px] border-x-2 md:border-x-4 border-t-2 md:border-t-4 transition-all duration-500 transform w-full
+                  ${isComplete 
+                    ? 'bg-green-500 border-green-600 translate-y-0 opacity-100 shadow-[0_-4px_10px_rgba(34,197,94,0.3)]' 
+                    : 'bg-slate-200 border-slate-300 opacity-0 translate-y-2 md:translate-y-4'
+                  }
+                `
+              }, React.createElement('span', {
+                className: 'text-white font-black text-[9px] md:text-xs uppercase px-1 text-center w-full leading-tight overflow-hidden break-words'
+              }, topicName))
+            ),
+            React.createElement('div', {
+              key: 'body',
+              className: `
+                w-full h-[180px] md:h-[300px] flex flex-col-reverse items-center py-0 px-0 transition-all duration-300 relative
+                
+                ${!isInBox ? 'border-2 md:border-4' : ''}
+
+                ${isComplete 
+                  ? 'border-green-600 bg-white shadow-lg rounded-b-[16px] md:rounded-b-[28px]' 
+                  : isSelected 
+                    ? 'bg-sky-50 border-sky-500 shadow-lg ring-2 md:ring-4 ring-sky-200/50 rounded-b-[16px] md:rounded-b-[28px] rounded-t-[16px] md:rounded-t-[28px]' 
+                    : (!isInBox ? 'bg-white/70 border-slate-300 shadow-sm rounded-b-[16px] md:rounded-b-[28px] rounded-t-[16px] md:rounded-t-[28px]' : '')
+                }
+                
+                ${isInBox ? 'box-block-locked bg-slate-900/40' : ''}
+                ${isInBox && isBoxStart ? 'rounded-l-3xl border-l-4' : ''}
+                ${isInBox && isBoxEnd ? 'rounded-r-3xl border-r-4' : ''}
+              `,
+              style: isInBox ? { borderColor: lockStatus?.condition?.color } : {}
+            }, [
+              isLocked && React.createElement('div', {
+                key: 'lock',
+                className: 'absolute inset-0 z-40 flex flex-col items-center justify-center rounded-[14px] md:rounded-[24px] bg-slate-900/10 backdrop-blur-[2px]'
+              }, [
+                condition && (!isInBox || isBoxStart || isBoxMiddle || isBoxEnd) && React.createElement('div', {
+                  key: 'cond',
+                  className: `flex flex-col items-center bg-white px-1.5 py-1 md:px-3 md:py-2 rounded-lg md:rounded-2xl shadow-xl border min-w-[36px] sm:min-w-[44px] animate-pulse z-50
+                    ${isInBox && !isBoxStart ? 'opacity-20' : 'opacity-100'} 
+                  `,
+                  style: { 
+                    borderColor: condition.color || '#38bdf8',
+                    boxShadow: `0 4px 15px ${condition.color}44`
+                  }
+                }, React.createElement('div', { className: 'flex flex-col items-center gap-0.5 md:gap-1' }, getLockDisplay())),
+                !condition && React.createElement('span', { key: 'default-lock', className: 'text-lg md:text-3xl opacity-40' }, '🔒')
+              ]),
+              ...items.map((item, idx) => 
+                React.createElement(Cube, {
+                  key: item.id,
+                  item: item,
+                  isHighlighted: !isLocked && isSelected && sequenceIndices.includes(idx),
+                  isFloating: !isLocked && isPickingUp && sequenceIndices.includes(idx),
+                  indexInTube: idx,
+                  matchCount: getMatchCount(idx),
+                  floatingOffset: { mobile: floatingOffsetMobile, desktop: floatingOffsetDesktop }
+                })
+              ),
+              ...Array.from({ length: MAX_TUBE_CAPACITY - items.length }).map((_, i) =>
+                React.createElement('div', {
+                  key: `empty-${i}`,
+                  className: 'w-[46px] h-[44px] md:w-full md:aspect-[1.1/1] rounded-md md:rounded-lg border-2 border-dashed border-slate-200 opacity-30 shrink-0'
+                })
+              )
+            ])
+          ]);
+        };
+
+        // ==================== MAIN APP ====================
+        const App = () => {
+          const [status, setStatus] = useState(GameStatus.START);
+          const [level, setLevel] = useState(null);
+          const [selectedTubeIndex, setSelectedTubeIndex] = useState(null);
+          const [loading, setLoading] = useState(false);
+          const [hasAddedExtraTube, setHasAddedExtraTube] = useState(false);
+          const [revealedHints, setRevealedHints] = useState([]);
+          const [hintCharges, setHintCharges] = useState(0);
+          const [completedTopicsHistory, setCompletedTopicsHistory] = useState([]);
+          const [showLevelSelector, setShowLevelSelector] = useState(false);
+          const [linkColorIndex, setLinkColorIndex] = useState(0);
+          const [timeLeft, setTimeLeft] = useState(0);
+          const [currentLevelNum, setCurrentLevelNum] = useState(1);
+          const [furthestLevel, setFurthestLevel] = useState(1);
+          const [customers, setCustomers] = useState([]);
+          const [hasVipSpawned, setHasVipSpawned] = useState(false);
+          const [vipSpawnTime, setVipSpawnTime] = useState(0);
+          const [effectMessage, setEffectMessage] = useState(null);
+
+          useEffect(() => {
+            const savedGeneralLvl = localStorage.getItem('topic_sort_level');
+            const savedGeneralFur = localStorage.getItem('topic_sort_furthest');
+            setCurrentLevelNum(parseInt(savedGeneralLvl || '1', 10));
+            setFurthestLevel(parseInt(savedGeneralFur || '1', 10));
+            setStatus(GameStatus.START);
+            setLevel(null);
+          }, []);
+
+          useEffect(() => {
+            let timer;
+            if (status === GameStatus.PLAYING && level) {
+              timer = window.setInterval(() => {
+                setTimeLeft(prev => {
+                  if (prev <= 1) {
+                    setStatus(GameStatus.LOST);
+                    return 0;
+                  }
+                  if (!hasVipSpawned && prev <= vipSpawnTime && customers.length === 0) {
+                     spawnVipCustomer(prev);
+                  }
+                  return prev - 1;
+                });
+
+                setCustomers(prev => {
+                    const nextCustomers = prev.map(c => ({ ...c, timeLeft: c.timeLeft - 1 }));
+                    const angryCustomers = nextCustomers.filter(c => c.timeLeft <= 0 && c.status !== 'angry');
+                    if (angryCustomers.length > 0) {
+                        handleCustomerAngry();
+                        return nextCustomers.map(c => c.timeLeft <= 0 ? { ...c, status: 'angry' } : c);
+                    }
+                    return nextCustomers.filter(c => !(c.status === 'angry' && c.timeLeft < -1));
+                });
+              }, 1000);
+            }
+            return () => clearInterval(timer);
+          }, [status, timeLeft, level, customers, hasVipSpawned, vipSpawnTime]);
+
+          const showEffect = (text, type) => {
+            setEffectMessage({ text, type });
+            setTimeout(() => setEffectMessage(null), 2000);
+          };
+
+          const spawnVipCustomer = (currentTimeLeft) => {
+            if (!level) return;
+            setHasVipSpawned(true);
+
+            const availableTopics = level.topics.filter(t => !completedTopicsHistory.includes(t.id));
+            if (availableTopics.length === 0) return;
+
+            let orderCount = 1;
+            if (currentLevelNum >= 4 && availableTopics.length >= 2) {
+               orderCount = Math.random() > 0.4 ? 2 : 1;
+            } else if (availableTopics.length >= 3) {
+               orderCount = 3;
+            }
+            
+            const shuffledTopics = [...availableTopics].sort(() => Math.random() - 0.5).slice(0, orderCount);
+            const patienceTime = Math.min(currentTimeLeft, 120);
+            const randomAvatar = CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)];
+
+            const newCustomer = { 
+                id: Date.now().toString(), 
+                avatar: randomAvatar, 
+                requestedTopicIds: shuffledTopics.map(t => t.id),
+                requestedIcons: shuffledTopics.map(t => DISH_MAPPING[t.id] || '🥘'),
+                servedTopicIds: [],
+                timeLeft: patienceTime, 
+                maxTime: patienceTime, 
+                status: 'waiting',
+                isVip: true
+            };
+            
+            setCustomers([newCustomer]);
+            showEffect("BOSS ORDER!", 'bad');
+          };
+
+          const handleCustomerAngry = () => {
+            setTimeLeft(prev => Math.max(0, prev - PENALTY_TIME));
+            showEffect(`-${PENALTY_TIME}s`, 'bad');
+          };
+
+          const handleTopicCompleted = (topicId) => {
+            setCompletedTopicsHistory(prev => {
+                if (prev.includes(topicId)) return prev;
+                return [...prev, topicId];
+            });
+
+            setCustomers(prev => {
+                return prev.map(c => {
+                    if (c.status !== 'waiting') return c;
+                    
+                    if (c.requestedTopicIds.includes(topicId)) {
+                        const updatedServed = [...(c.servedTopicIds || []), topicId];
+                        
+                        showEffect("SERVED!", 'good');
+                        setTimeLeft(curr => Math.min(curr + 10, MAX_TIME_LIMIT)); 
+
+                        if (updatedServed.length === c.requestedTopicIds.length) {
+                            setTimeout(() => {
+                                setCustomers(p => p.filter(cust => cust.id !== c.id));
+                                setTimeLeft(curr => Math.min(curr + REWARD_TIME, MAX_TIME_LIMIT));
+                                showEffect(`+${REWARD_TIME}s`, 'good');
+                            }, 800);
+                            return { ...c, status: 'eating', servedTopicIds: updatedServed };
+                        } else {
+                            return { ...c, servedTopicIds: updatedServed };
+                        }
+                    }
+                    return c;
+                });
+            });
+          };
+
+          const useTopicHint = () => {
+            if (!level || status !== GameStatus.PLAYING || hintCharges <= 0) return;
+            const uncompletedAndNotHinted = level.topics.filter(t => !completedTopicsHistory.includes(t.id) && !revealedHints.includes(t.id));
+            if (uncompletedAndNotHinted.length > 0) {
+              const randomTopic = uncompletedAndNotHinted[Math.floor(Math.random() * uncompletedAndNotHinted.length)];
+              setRevealedHints(prev => [...prev, randomTopic.id]);
+              setHintCharges(prev => prev - 1);
+              showEffect("HINT!", 'good');
+            } else {
+              showEffect("HẾT HINT!", 'bad');
+            }
+          };
+
+          const useAddTube = () => {
+            if (!level || hasAddedExtraTube || status !== GameStatus.PLAYING) return;
+            const newTube = {
+                id: `extra_${Date.now()}`,
+                items: [],
+                status: { isLocked: false }
+            };
+            setLevel({ ...level, tubes: [...level.tubes, newTube] });
+            setHasAddedExtraTube(true);
+            showEffect("+1 ỐNG", 'good');
+          };
+
+          const useLink = () => {
+            if (!level || status !== GameStatus.PLAYING) return;
+            const color = LINK_COLORS[linkColorIndex % LINK_COLORS.length];
+            let posA = { tubeIdx: -1, itemIdx: -1 }, posB = { tubeIdx: -1, itemIdx: -1 };
+            for (let i = 0; i < level.tubes.length; i++) {
+              for (let k = 0; k < level.tubes[i].items.length; k++) {
+                const itemA = level.tubes[i].items[k];
+                if (itemA.isHidden || itemA.linkColor) continue;
+                const hasNeighborInSameTube = ((k > 0 && level.tubes[i].items[k-1].topicId === itemA.topicId && !level.tubes[i].items[k-1].isHidden) || (k < level.tubes[i].items.length - 1 && level.tubes[i].items[k+1].topicId === itemA.topicId && !level.tubes[i].items[k+1].isHidden));
+                if (hasNeighborInSameTube) continue;
+                for (let j = 0; j < level.tubes.length; j++) {
+                  if (i === j) continue;
+                  for (let l = 0; l < level.tubes[j].items.length; l++) {
+                    const itemB = level.tubes[j].items[l];
+                    if (!itemB.isHidden && !itemB.linkColor && itemA.topicId === itemB.topicId) { posA = { tubeIdx: i, itemIdx: k }; posB = { tubeIdx: j, itemIdx: l }; break; }
+                  }
+                  if (posA.tubeIdx !== -1) break;
+                }
+                if (posA.tubeIdx !== -1) break;
+              }
+              if (posA.tubeIdx !== -1) break;
+            }
+            if (posA.tubeIdx !== -1 && posB.tubeIdx !== -1) {
+              const newTubes = level.tubes.map((tube, tIdx) => ({
+                ...tube,
+                items: tube.items.map((item, iIdx) => {
+                    if ((tIdx === posA.tubeIdx && iIdx === posA.itemIdx) || (tIdx === posB.tubeIdx && iIdx === posB.itemIdx)) return { ...item, linkColor: color };
+                    return item;
+                })
+              }));
+              setLinkColorIndex(p => p + 1); setLevel({ ...level, tubes: newTubes });
+              showEffect("LINK!", 'good');
+            }
+          };
+
+          const handleCheatWin = () => {
+            if (!level) return;
+            const allTopicIds = level.topics.map(t => t.id);
+            setCompletedTopicsHistory(allTopicIds);
+            const newTubes = level.topics.map(topic => ({
+              id: `cheat_${topic.id}`,
+              items: Array.from({ length: MAX_TUBE_CAPACITY }, (_, idx) => ({ id: `${topic.id}_cheat_${idx}`, iconId: `${topic.id}_${idx}`, icon: topic.items[idx % topic.items.length], label: topic.name, topicId: topic.id, isHidden: false })),
+              status: { isLocked: false }
+            }));
+            setLevel({ ...level, tubes: newTubes, queuedTubes: [] });
+            showEffect("MAGIC!", 'good');
+          };
+
+          const handleUnlockAllLevels = () => {
+            setFurthestLevel(100);
+            localStorage.setItem('topic_sort_furthest', '100');
+            showEffect("UNLOCKED ALL", 'good');
+          };
+
+          const getLevelSpecs = (lvl) => {
+            const cycleLen = 8;
+            const eraIndex = Math.floor((lvl - 1) / cycleLen);
+            const maxActiveTubes = lvl >= 15 ? 10 : (lvl >= 8 ? 8 : 7);
+            
+            let boxBlockSize = 0;
+            if (eraIndex >= 1 && lvl % 3 === 0) boxBlockSize = Math.min(2 + Math.floor(Math.random() * 2), 3);
+            
+            let topicLockCount = 0;
+            if (lvl >= 5) topicLockCount = Math.min(1 + Math.floor(lvl / 15), 2);
+            
+            let countLockCount = 0;
+            if (lvl >= 7 && lvl % 3 !== 0) countLockCount = Math.min(1 + Math.floor((lvl - 7) / 10), 2);
+
+            const totalLocks = (boxBlockSize > 0 ? boxBlockSize : 0) + topicLockCount + countLockCount;
+            const openTubes = maxActiveTubes - totalLocks;
+            
+            const minTopicsRequired = Math.max(3, openTubes);
+            const totalTopicCount = Math.min(minTopicsRequired + Math.floor(lvl / 10), TOPIC_DATA.length);
+            const totalTubes = Math.min(totalTopicCount + 2, maxActiveTubes);
+
+            const isLegendary = (lvl % cycleLen) === 0;
+            const timeLimit = MAX_TIME_LIMIT;
+            
+            let hiddenCount = 0;
+            if (lvl >= 4) hiddenCount = Math.min(lvl - 2, 8);
+            
+            let eraName = eraIndex === 0 ? "Bếp Trưởng Tập Sự" : eraIndex === 1 ? "Nhà Hàng Chuyên Nghiệp" : eraIndex === 2 ? "Siêu Đầu Bếp Thế Giới" : `Huyền Thoại Era ${eraIndex + 1}`;
+            
+            return { 
+                eraName, 
+                totalTopicCount,
+                totalTubes, 
+                isLegendary, 
+                difficultyName: isLegendary ? `BOSS` : (lvl < 3 ? 'HỌC VIỆC' : 'THÁCH THỨC'), 
+                timeLimit, 
+                hiddenCount, 
+                topicLockCount, 
+                countLockCount, 
+                boxBlockSize 
+            };
+          };
+
+          const generateLevelOffline = (lvlNum) => {
+            const specs = getLevelSpecs(lvlNum);
+            const selectedTopics = [...TOPIC_DATA].sort(() => Math.random() - 0.5).slice(0, specs.totalTopicCount);
+            
+            const createItem = (t, idx) => ({ 
+                id: `${t.id}_${idx}_${Math.random().toString(36).substr(2, 5)}`, 
+                iconId: `${t.id}_${idx}`, 
+                icon: t.items[idx % t.items.length], 
+                label: t.name, 
+                topicId: t.id, 
+                isHidden: false 
+            });
+
+            const activePool = [];
+            selectedTopics.forEach(t => {
+                for (let i = 0; i < MAX_TUBE_CAPACITY; i++) {
+                    activePool.push(createItem(t, i));
+                }
+            });
+
+            const shuffle = (arr) => {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+            };
+            shuffle(activePool);
+
+            const tubes = Array.from({ length: specs.totalTubes }, (_, i) => ({
+                id: `tube_${i}`,
+                items: [],
+                status: { isLocked: false }
+            }));
+
+            const lockableIndices = Array.from({ length: specs.totalTubes - 3 }, (_, i) => i + 3);
+            
+            if (specs.boxBlockSize >= 2 && lockableIndices.length >= specs.boxBlockSize) {
+                const boxId = `box_${Date.now()}`;
+                const keyId = `key_${Date.now()}`;
+                const lockColor = BOX_LOCK_COLORS[Math.floor(Math.random() * BOX_LOCK_COLORS.length)];
+                for (let i = 0; i < specs.boxBlockSize; i++) {
+                    const tubeIdx = lockableIndices.shift();
+                    tubes[tubeIdx].status = { isLocked: true, groupId: boxId, condition: { type: 'key', value: keyId, color: lockColor } };
+                }
+            }
+
+            const topicLockTriggerId = selectedTopics[0].id;
+            const availableForTopicLock = lockableIndices.filter(idx => !tubes[idx].status.isLocked);
+            if (specs.topicLockCount > 0 && availableForTopicLock.length > 0) {
+                for (let i = 0; i < Math.min(specs.topicLockCount, availableForTopicLock.length); i++) {
+                    const idx = lockableIndices.shift();
+                    tubes[idx].status = { isLocked: true, condition: { type: 'topic', value: topicLockTriggerId, label: DISH_MAPPING[topicLockTriggerId] || '🥘', color: '#ec4899' } };
+                }
+            }
+
+            const availableForCountLock = lockableIndices.filter(idx => !tubes[idx].status.isLocked);
+            if (specs.countLockCount > 0 && availableForCountLock.length > 0) {
+                for (let i = 0; i < Math.min(specs.countLockCount, availableForCountLock.length); i++) {
+                    const idx = lockableIndices.shift();
+                    const requiredCount = Math.floor(Math.random() * Math.max(1, Math.floor(specs.totalTopicCount / 2))) + 1;
+                    tubes[idx].status = { isLocked: true, condition: { type: 'count', value: requiredCount, color: '#8b5cf6' } };
+                }
+            }
+
+            const accessibleIndices = tubes.map((_, i) => i).filter(i => !tubes[i].status.isLocked);
+            const reservedEmptyIdx = accessibleIndices[accessibleIndices.length - 1];
+            
+            const openFillingOrder = accessibleIndices.filter(i => i !== reservedEmptyIdx);
+            const lockedFillingOrder = tubes.map((_, i) => i).filter(i => tubes[i].status.isLocked);
+
+            let tempPool = [...activePool];
+            
+            for (const tubeIdx of openFillingOrder) {
+                while (tubes[tubeIdx].items.length < MAX_TUBE_CAPACITY && tempPool.length > 0) {
+                    tubes[tubeIdx].items.push(tempPool.shift());
+                }
+            }
+
+            for (const tubeIdx of lockedFillingOrder) {
+                const tubeStatus = tubes[tubeIdx].status;
+                const forbiddenTopicId = tubeStatus.condition?.type === 'topic' ? tubeStatus.condition.value : null;
+                
+                while (tubes[tubeIdx].items.length < MAX_TUBE_CAPACITY && tempPool.length > 0) {
+                    const validItemIdx = tempPool.findIndex(item => item.topicId !== forbiddenTopicId);
+                    
+                    if (validItemIdx !== -1) {
+                        tubes[tubeIdx].items.push(tempPool.splice(validItemIdx, 1)[0]);
+                    } else {
+                        tubes[tubeIdx].items.push(tempPool.shift());
+                    }
+                }
+            }
+
+            const queuePool = [...tempPool];
+            shuffle(queuePool);
+
+            const boxTube = tubes.find(t => t.status.condition?.type === 'key');
+            if (boxTube?.status.condition) {
+                const keyId = boxTube.status.condition.value;
+                const openTubesWithItems = tubes.filter(t => !t.status.isLocked && t.items.length > 0);
+                if (openTubesWithItems.length > 0) {
+                    const targetTube = openTubesWithItems[Math.floor(Math.random() * openTubesWithItems.length)];
+                    targetTube.items[0].hasKey = keyId;
+                }
+            }
+
+            if (specs.hiddenCount > 0) {
+                let applied = 0;
+                const validTubes = tubes.filter(t => !t.status.isLocked && t.items.length >= 2);
+                for (const t of validTubes) {
+                    if (applied >= specs.hiddenCount) break;
+                    t.items[0].isHidden = true;
+                    applied++;
+                }
+            }
+
+            const queuedTubes = [];
+            for (let i = 0; i < queuePool.length; i += MAX_TUBE_CAPACITY) {
+                queuedTubes.push(queuePool.slice(i, i + MAX_TUBE_CAPACITY));
+            }
+
+            return { 
+              levelNumber: lvlNum, 
+              difficultyTier: specs.difficultyName, 
+              eraName: specs.eraName, 
+              topics: selectedTopics, 
+              tubes: tubes, 
+              queuedTubes: queuedTubes, 
+              timeLimit: specs.timeLimit, 
+              moveLimit: 999, 
+              isLegendary: specs.isLegendary
+            };
+          };
+
+          const initLevel = useCallback((num) => {
+            const lvlNum = num ?? currentLevelNum;
+            setLoading(true); setHasAddedExtraTube(false); setRevealedHints([]); setCompletedTopicsHistory([]); setLinkColorIndex(0); setCustomers([]); setHasVipSpawned(false);
+            const levelData = generateLevelOffline(lvlNum);
+            setLevel(levelData); setTimeLeft(levelData.timeLimit); setLoading(false); setStatus(GameStatus.PLAYING); setSelectedTubeIndex(null);
+            setHintCharges(Math.max(1, Math.ceil(levelData.topics.length / 2)));
+            const spawnTime = Math.max(10, levelData.timeLimit - (15 + Math.floor(Math.random() * 30)));
+            setVipSpawnTime(spawnTime);
+            localStorage.setItem('topic_sort_level', lvlNum.toString());
+          }, [currentLevelNum]);
+
+          const handleTubeReplacement = (clearedId) => {
+              if (!level) return;
+              
+              const newActiveTubes = [...level.tubes];
+              const newQueuedTubes = [...level.queuedTubes];
+              const targetIndex = newActiveTubes.findIndex(t => t.id === clearedId);
+              
+              if (targetIndex === -1) return;
+
+              if (newQueuedTubes.length > 0) {
+                  const nextItems = newQueuedTubes.shift();
+                  newActiveTubes[targetIndex] = {
+                      ...newActiveTubes[targetIndex],
+                      items: nextItems,
+                      status: { isLocked: false }
+                  };
+                  showEffect("NEXT TUBE!", 'good');
+                  setLevel({ ...level, tubes: newActiveTubes, queuedTubes: newQueuedTubes });
+              }
+              
+              setSelectedTubeIndex(null); 
+          };
+
+          const handleTubeClick = (index) => {
+            if (status !== GameStatus.PLAYING || !level) return;
+            
+            const targetTube = level.tubes[index];
+            
+            const isTubeComplete = targetTube.items.length === MAX_TUBE_CAPACITY && 
+                                   !targetTube.items.some(i => i.isHidden) &&
+                                   targetTube.items.every(i => i.topicId === targetTube.items[0].topicId);
+
+            if (targetTube.status.isLocked || isTubeComplete) return;
+
+            if (selectedTubeIndex === null) {
+              if (targetTube.items.length === 0 || targetTube.items[targetTube.items.length - 1].isHidden) return;
+              setSelectedTubeIndex(index);
+            } else {
+              if (selectedTubeIndex === index) { setSelectedTubeIndex(null); return; }
+              const sourceTubeItems = [...level.tubes[selectedTubeIndex].items];
+              const targetTubeItems = [...targetTube.items];
+              
+              if (targetTubeItems.length >= MAX_TUBE_CAPACITY) { setSelectedTubeIndex(null); return; }
+              
+              const topItem = sourceTubeItems[sourceTubeItems.length - 1];
+              const sequence = [];
+              for (let i = sourceTubeItems.length - 1; i >= 0; i--) {
+                if (sourceTubeItems[i].topicId === topItem.topicId && !sourceTubeItems[i].isHidden) sequence.push(sourceTubeItems[i]);
+                else break;
+              }
+              
+              const countToMove = Math.min(sequence.length, MAX_TUBE_CAPACITY - targetTubeItems.length);
+              const toMove = sourceTubeItems.slice(sourceTubeItems.length - countToMove).map(item => ({ ...item })).reverse();
+              const updatedSourceItems = sourceTubeItems.slice(0, sourceTubeItems.length - countToMove);
+              
+              if (updatedSourceItems.length > 0 && updatedSourceItems[updatedSourceItems.length - 1].isHidden) {
+                updatedSourceItems[updatedSourceItems.length - 1] = { ...updatedSourceItems[updatedSourceItems.length - 1], isHidden: false };
+              }
+              
+              const newTubes = level.tubes.map((t, idx) => {
+                  if (idx === selectedTubeIndex) return { ...t, items: updatedSourceItems };
+                  if (idx === index) return { ...t, items: [...targetTubeItems, ...toMove] };
+                  return t;
+              });
+              
+              setLevel({ ...level, tubes: newTubes }); setSelectedTubeIndex(null);
+            }
+          };
+
+          useEffect(() => {
+            if (level && status === GameStatus.PLAYING) {
+              const releasedKeyIds = level.tubes.map(t => t.items.length > 0 ? t.items[t.items.length-1] : null).filter(i => i && i.hasKey && !i.isHidden).map(i => i.hasKey);
+              let changed = false;
+              
+              const newTubes = level.tubes.map(t => {
+                if (!t.status.isLocked || !t.status.condition) return t;
+                let unlock = false;
+                const cond = t.status.condition;
+                
+                if (cond.type === 'key') {
+                  unlock = releasedKeyIds.includes(cond.value);
+                } else if (cond.type === 'topic') {
+                  unlock = completedTopicsHistory.includes(cond.value);
+                } else if (cond.type === 'count') {
+                  unlock = completedTopicsHistory.length >= cond.value;
+                }
+                
+                if (unlock) { changed = true; return { ...t, status: { isLocked: false } }; }
+                return t;
+              });
+              
+              if (changed) setLevel({ ...level, tubes: newTubes });
+              
+              if (completedTopicsHistory.length === level.topics.length) {
+                setStatus(GameStatus.WON);
+                if (currentLevelNum >= furthestLevel) {
+                  const newFurthest = currentLevelNum + 1;
+                  setFurthestLevel(newFurthest); localStorage.setItem('topic_sort_furthest', newFurthest.toString());
+                }
+              }
+            }
+          }, [level, status, currentLevelNum, furthestLevel, completedTopicsHistory]);
+
+          const formatTime = (seconds) => {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+          };
+          
+          const isTimeLow = timeLeft < 30;
+
+          const activeHintNames = revealedHints
+            .filter(id => !completedTopicsHistory.includes(id))
+            .map(id => level?.topics.find(t => t.id === id)?.name)
+            .filter(Boolean);
+
+          const PowerUpButton = ({ icon, label, onClick, disabled, locked }) => (
+            React.createElement('button', {
+              onClick: locked ? undefined : onClick,
+              disabled: disabled && !locked,
+              className: `relative p-1 md:p-1.5 rounded-lg flex flex-col items-center min-w-[48px] md:min-w-[58px] transition-all ${locked ? 'opacity-30 grayscale cursor-not-allowed bg-slate-200' : disabled ? 'opacity-40 cursor-not-allowed' : 'bg-white border border-slate-200 shadow-sm hover:scale-110 active:scale-95'}`
+            }, [
+              React.createElement('span', { key: 'icon', className: 'text-lg md:text-2xl relative' }, [
+                icon,
+                locked && React.createElement('div', { key: 'lock', className: 'absolute -top-1 -right-1 text-[8px]' }, '🔒')
+              ]),
+              React.createElement('span', { key: 'label', className: 'text-[8px] font-black uppercase text-slate-500 tracking-tighter mt-1 text-center leading-none' }, label)
+            ])
+          );
+
+          return React.createElement('div', {
+            className: `min-h-screen flex flex-col items-center p-2 py-4 transition-colors duration-700 ${level?.isLegendary ? 'legendary-bg' : 'normal-bg'}`
+          }, [
+            effectMessage && React.createElement('div', {
+              key: 'effect',
+              className: `fixed top-1/4 left-1/2 -translate-x-1/2 z-[100] text-3xl md:text-5xl font-black animate-[bounceIn_0.5s] drop-shadow-lg pointer-events-none ${effectMessage.type === 'good' ? 'text-green-500' : 'text-red-500'}`
+            }, effectMessage.text),
+
+            React.createElement('div', {
+              key: 'header',
+              className: `w-full max-w-lg flex items-center justify-between rounded-2xl shadow-sm p-2 mb-2 transition-all duration-500 card-bg relative z-20 shrink-0 ${level?.isLegendary ? 'border-2 border-pink-500 boss-glow' : 'border border-slate-200'}`
+            }, [
+              React.createElement('div', { key: 'left', className: 'flex flex-col items-start gap-1' }, [
+                React.createElement('div', { key: 'top', className: 'flex items-center gap-2' }, [
+                  React.createElement('h1', { key: 'title', className: 'text-lg md:text-xl font-bold text-primary hidden lg:block' }, 'Kitchen Sort'),
+                  React.createElement('div', { key: 'info', className: 'px-2 py-1 rounded-full bg-white/50 shadow-inner border border-slate-100 flex items-center gap-2' }, [
+                    React.createElement('span', { key: 'lvl', className: `text-[12px] font-black uppercase ${level?.isLegendary ? 'text-pink-600' : 'text-primary'}` }, `Lvl ${currentLevelNum}`),
+                    React.createElement('div', { key: 'time', className: `flex items-center gap-1 px-2 py-0.5 rounded-full transition-all duration-300 ${isTimeLow ? 'bg-red-500 text-white animate-[shake_0.5s_infinite]' : 'bg-slate-100 text-slate-600'}` }, [
+                      React.createElement('span', { key: 'icon', className: 'text-xs' }, '⏰'),
+                      React.createElement('span', { key: 'val', className: 'text-[12px] font-black font-mono' }, formatTime(timeLeft))
+                    ])
+                  ])
+                ]),
+                level && level.queuedTubes.length > 0 && status === GameStatus.PLAYING && React.createElement('div', {
+                  key: 'queue',
+                  className: 'ml-1 px-2 py-0.5 bg-slate-800 text-white rounded-full text-[9px] font-black uppercase tracking-tight shadow-sm animate-pulse flex items-center gap-1'
+                }, [
+                  React.createElement('span', { key: 'text' }, `Hàng đợi: ${level.queuedTubes.length}`),
+                  React.createElement('span', { key: 'icon' }, '🍱')
+                ])
+              ]),
+              React.createElement('div', { key: 'center', className: 'flex-1 flex justify-center px-4 overflow-hidden' },
+                activeHintNames.length > 0 && React.createElement('div', {
+                  className: 'flex flex-wrap justify-center gap-1.5 overflow-y-auto max-h-[44px] no-scrollbar py-1'
+                }, activeHintNames.map((name, idx) =>
+                  React.createElement('div', {
+                    key: idx,
+                    className: 'animate-[bounceIn_0.3s] bg-pink-100 text-pink-700 border border-pink-200 px-2 py-0.5 rounded-lg shadow-sm'
+                  }, React.createElement('span', { className: 'text-[10px] md:text-xs font-black uppercase tracking-tight' }, name))
+                ))
+              ),
+              React.createElement('button', {
+                key: 'map',
+                onClick: () => setShowLevelSelector(true),
+                className: 'p-2 bg-white border border-slate-100 rounded-xl shadow-sm hover:scale-110 active:scale-95 transition-all text-lg shrink-0'
+              }, '🗺️')
+            ]),
+
+            status === GameStatus.PLAYING && React.createElement('div', {
+              key: 'playing',
+              className: 'w-full max-w-lg flex flex-col items-center'
+            }, [
+              React.createElement('div', { key: 'customers', className: 'w-full flex justify-center items-center py-2 shrink-0 h-[90px] md:h-[110px]' },
+                customers.map((customer) =>
+                  React.createElement('div', {
+                    key: customer.id,
+                    className: `flex items-center gap-2 md:gap-4 animate-customer-enter ${customer.status === 'eating' ? 'opacity-0 scale-75 transition-all duration-500' : ''}`
+                  }, [
+                    React.createElement('div', { key: 'avatar', className: 'text-5xl md:text-6xl animate-float-slow drop-shadow-xl relative' }, [
+                      customer.avatar,
+                      customer.isVip && React.createElement('span', { key: 'vip', className: 'absolute -top-1 -right-1 text-xl' }, '👑')
+                    ]),
+                    React.createElement('div', { key: 'bubble', className: 'speech-bubble bg-white border-[2px] md:border-[3px] border-[#4a90e2] rounded-[18px] md:rounded-[24px] p-1.5 md:p-2 shadow-md min-w-[160px] md:min-w-[220px]' }, [
+                      React.createElement('div', { key: 'dishes', className: 'flex justify-center gap-1.5 md:gap-2 mb-1.5 md:mb-2' },
+                        customer.requestedTopicIds.map((topicId, idx) => {
+                          const isServed = customer.servedTopicIds?.includes(topicId);
+                          const icon = customer.requestedIcons[idx];
+                          return React.createElement('div', {
+                            key: idx,
+                            className: `relative bg-[#fdf8f1] border border-[#f0e0c0] rounded-lg md:rounded-xl w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-xl md:text-2xl shadow-sm transition-all ${isServed ? 'opacity-70 scale-90' : ''}`
+                          }, [
+                            icon,
+                            isServed && React.createElement('div', {
+                              key: 'check',
+                              className: 'absolute inset-0 flex items-center justify-center bg-green-500/20 rounded-lg md:rounded-xl'
+                            }, React.createElement('span', { className: 'text-green-600 font-black text-xl md:text-3xl drop-shadow-md animate-[bounceIn_0.3s]' }, '✓'))
+                          ]);
+                        })
+                      ),
+                      React.createElement('div', { key: 'timer', className: 'relative w-full h-4 md:h-5 bg-[#0c162d] rounded-full overflow-hidden border-[1px] border-[#0c162d] shadow-inner' }, [
+                        React.createElement('div', {
+                          key: 'bar',
+                          className: `h-full transition-all duration-1000 linear ${customer.timeLeft < 15 ? 'bg-orange-500' : 'bg-[#22c55e]'}`,
+                          style: { width: `${(customer.timeLeft / customer.maxTime) * 100}%` }
+                        }),
+                        React.createElement('div', { key: 'text', className: 'absolute inset-0 flex items-center justify-center' },
+                          React.createElement('span', { className: 'text-white text-[8px] md:text-[11px] font-black font-mono drop-shadow-md' }, formatTime(customer.timeLeft))
+                        )
+                      ])
+                    ])
+                  ])
+                )
+              ),
+              React.createElement('div', { key: 'board', className: 'w-full flex flex-col justify-center items-center p-2 py-4' },
+                React.createElement('div', {
+                  className: `grid grid-cols-5 gap-x-1 sm:gap-x-2 w-full max-w-full justify-items-center ${level?.tubes && level.tubes.length > 5 ? 'gap-y-[20px]' : 'gap-y-4'}`
+                }, level?.tubes.map((tube, idx) =>
+                  React.createElement(Tube, {
+                    key: tube.id,
+                    id: tube.id,
+                    items: tube.items,
+                    isSelected: selectedTubeIndex === idx,
+                    onClick: () => handleTubeClick(idx),
+                    isPickingUp: selectedTubeIndex === idx,
+                    isLegendary: level.isLegendary,
+                    lockStatus: tube.status,
+                    prevLockStatus: idx > 0 ? level.tubes[idx-1].status : undefined,
+                    nextLockStatus: idx < level.tubes.length - 1 ? level.tubes[idx+1].status : undefined,
+                    hasQueue: level.queuedTubes.length > 0,
+                    completedCount: completedTopicsHistory.length,
+                    onComplete: handleTopicCompleted,
+                    onReplace: () => handleTubeReplacement(tube.id)
+                  })
+                ))
+              ),
+              React.createElement('div', { key: 'footer', className: 'w-full pt-3 pb-4 flex items-center justify-center gap-1.5 sm:gap-2.5 bg-white/50 backdrop-blur-sm rounded-2xl mt-2 mb-2' }, [
+                React.createElement(PowerUpButton, { key: 'hint', icon: '💡', label: `Hint (${hintCharges})`, onClick: useTopicHint, disabled: !level || hintCharges <= 0, locked: false }),
+                React.createElement(PowerUpButton, { key: 'add', icon: '🧪', label: 'Add', onClick: useAddTube, disabled: hasAddedExtraTube, locked: false }),
+                React.createElement(PowerUpButton, { key: 'link', icon: '🔗', label: 'Link', onClick: useLink, disabled: false, locked: false }),
+                React.createElement(PowerUpButton, { key: 'win', icon: '🪄', label: 'Win', onClick: handleCheatWin, disabled: false, locked: false })
+              ])
+            ]),
+
+            status === GameStatus.START && React.createElement('div', {
+              key: 'start',
+              className: 'flex flex-col items-center justify-center w-full py-8'
+            }, React.createElement('div', {
+              className: `text-center p-8 bg-white rounded-[30px] shadow-2xl border-b-[8px] border-slate-200 w-full mx-4 animate-[bounceIn_0.8s] ${getLevelSpecs(currentLevelNum).isLegendary ? 'border-pink-200' : ''}`
+            }, [
+              React.createElement('div', { key: 'era', className: 'text-[10px] font-black text-primary uppercase mb-2 tracking-[0.2em]' }, getLevelSpecs(currentLevelNum).eraName),
+              React.createElement('div', { key: 'emoji', className: 'text-6xl mb-4' }, getLevelSpecs(currentLevelNum).isLegendary ? '👑' : '🥘'),
+              React.createElement('h2', { key: 'level', className: 'text-4xl font-black text-slate-800 mb-1' }, `Màn ${currentLevelNum}`),
+              React.createElement('div', { key: 'diff', className: 'text-lg font-black text-pink-500 mb-6 uppercase tracking-widest' }, getLevelSpecs(currentLevelNum).difficultyName),
+              React.createElement('div', { key: 'stats', className: 'flex items-center justify-center gap-3 mb-6 text-slate-400 font-bold text-sm' }, [
+                React.createElement('span', { key: 'topics', className: 'bg-slate-50 px-3 py-1.5 rounded-lg' }, `🥘 ${getLevelSpecs(currentLevelNum).totalTopicCount} món`),
+                React.createElement('span', { key: 'time', className: 'bg-slate-50 px-3 py-1.5 rounded-lg' }, `⏰ ${formatTime(MAX_TIME_LIMIT)}`)
+              ]),
+              React.createElement('button', {
+                key: 'btn',
+                onClick: () => initLevel(),
+                className: 'w-full px-6 py-4 bg-primary text-white rounded-2xl font-black text-xl shadow-lg border-b-4 border-primary-dark hover:brightness-110 active:translate-y-1 transition-all'
+              }, 'VÀO BẾP')
+            ])),
+
+            showLevelSelector && React.createElement('div', {
+              key: 'selector',
+              className: 'fixed inset-0 z-[400] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6 animate-[fadeIn_0.3s]'
+            }, React.createElement('div', {
+              className: 'bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]'
+            }, [
+              React.createElement('div', { key: 'header', className: 'p-8 border-b border-slate-100 flex justify-between items-center flex-wrap gap-4' }, [
+                React.createElement('h2', { key: 'title', className: 'text-3xl font-black text-slate-800' }, 'Chọn Màn Chơi'),
+                React.createElement('div', { key: 'actions', className: 'flex items-center gap-4' }, [
+                  React.createElement('button', {
+                    key: 'unlock',
+                    onClick: handleUnlockAllLevels,
+                    className: 'bg-amber-400 text-amber-900 px-4 py-2 rounded-xl font-black text-sm shadow-sm hover:bg-amber-300 transition-all active:scale-95'
+                  }, 'MỞ KHÓA TẤT CẢ'),
+                  React.createElement('button', {
+                    key: 'close',
+                    onClick: () => setShowLevelSelector(false),
+                    className: 'text-4xl text-slate-300 hover:text-slate-600 transition-colors'
+                  }, '×')
+                ])
+              ]),
+              React.createElement('div', {
+                key: 'grid',
+                className: 'flex-1 overflow-y-auto p-8 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4 scrollbar-hide'
+              }, Array.from({ length: 100 }, (_, i) => i + 1).map((num) =>
+                React.createElement('button', {
+                  key: num,
+                  disabled: num > furthestLevel,
+                  onClick: () => { setCurrentLevelNum(num); setShowLevelSelector(false); setStatus(GameStatus.START); setLevel(null); initLevel(num); },
+                  className: `aspect-square rounded-2xl flex items-center justify-center text-xl font-black transition-all transform active:scale-95 ${num > furthestLevel ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : num === currentLevelNum ? 'bg-primary text-white shadow-lg scale-110 ring-4 ring-primary/20 z-10' : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-primary shadow-sm'}`
+                }, num > furthestLevel ? '🔒' : num)
+              ))
+            ])),
+
+            (status === GameStatus.WON || status === GameStatus.LOST) && React.createElement('div', {
+              key: 'end',
+              className: `fixed inset-0 z-[500] backdrop-blur-sm flex items-center justify-center animate-[fadeIn_0.5s] ${status === GameStatus.WON ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`
+            }, React.createElement('div', {
+              className: `bg-white p-12 rounded-[50px] shadow-2xl text-center border-b-[16px] flex flex-col items-center gap-4 max-w-md mx-4 animate-[bounceIn_0.5s] ${status === GameStatus.WON ? 'border-emerald-100' : 'border-rose-100'}`
+            }, [
+              React.createElement('div', { key: 'emoji', className: `text-8xl mb-4 ${status === GameStatus.WON ? 'animate-bounce' : ''}` }, status === GameStatus.WON ? '🏆' : '🍳'),
+              React.createElement('h2', { key: 'title', className: `text-4xl font-black ${status === GameStatus.WON ? 'text-emerald-500' : 'text-rose-500'}` }, status === GameStatus.WON ? 'Tuyệt Đỉnh!' : 'Khét Bếp!'),
+              React.createElement('p', { key: 'msg', className: 'text-slate-500 text-lg font-bold mb-8' }, status === GameStatus.WON ? `Hoàn thành màn ${currentLevelNum}!` : 'Đừng nản chí!'),
+              React.createElement('button', {
+                key: 'btn',
+                onClick: () => { if(status === GameStatus.WON) setCurrentLevelNum(p => p + 1); setStatus(GameStatus.START); setLevel(null); if(status === GameStatus.LOST) initLevel(); },
+                className: `w-full py-5 text-white rounded-2xl font-black text-xl shadow-lg border-b-8 hover:scale-105 transition-all active:translate-y-1 ${status === GameStatus.WON ? 'bg-emerald-500 border-emerald-700' : 'bg-rose-500 border-rose-700'}`
+              }, status === GameStatus.WON ? 'TIẾP TỤC' : 'THỬ LẠI')
+            ])),
+
+            loading && React.createElement('div', {
+              key: 'loading',
+              className: 'fixed inset-0 z-[600] bg-white/90 backdrop-blur-xl flex flex-col items-center justify-center text-center p-10'
+            }, [
+              React.createElement('div', { key: 'spinner', className: 'w-16 h-16 border-8 border-primary/10 border-t-primary rounded-full animate-spin mb-6' }),
+              React.createElement('p', { key: 'text', className: 'text-primary text-lg font-black tracking-widest uppercase' }, 'Đang bày biện...')
+            ])
+          ]);
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+    
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html>
+
